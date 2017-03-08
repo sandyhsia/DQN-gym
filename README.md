@@ -18,14 +18,14 @@ Experiments on DQN
 
 ### 3. Hyper-params in **myRL.py** or **myRL-display.py**:
 
-> CHECKPOINT_DIR = './checkpoint'
-where you can save to, or load from check point.
+> 1.CHECKPOINT_DIR = './checkpoint'
+#### where you can save to, or load from check point.
 
-> save_request = 1
-means you're sure your environment is ok, thus you want to save your model after a period of training.
+> 2. save_request = 1
+#### means you're sure your environment is ok, thus you want to save your model after a period of training.
 
-> restore_request = 1
-means you want to train from "this" check point file (clarified in './checkpoint/checkpoint' file)
+> 3. restore_request = 1
+#### means you want to train from "this" check point file (clarified in './checkpoint/checkpoint' file)
 Usaully, the file contain the lastest checkpoint file name.
 However, in another way around, if you change the the file name here, then, it would start from the place you want.
 
@@ -36,7 +36,7 @@ However, in another way around, if you change the the file name here, then, it w
 > 2. reward_method() in **Virtual-Env.py**
 
 > 3. In **car-DQN.py**, I am still not sure how to manipulate the replay_buffer(). And I am trying to add so-called memory and attention to agent.
-Idea from here: https://zhuanlan.zhihu.com/p/21320865?refer=intelligentunit
+#### Idea from here: https://zhuanlan.zhihu.com/p/21320865?refer=intelligentunit
 
 
 
