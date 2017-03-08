@@ -19,17 +19,15 @@ Experiments on DQN
 ### 3. Hyper-params in **myRL.py** or **myRL-display.py**:
 
 > CHECKPOINT_DIR = './checkpoint'
+where you can save to, or load from check point.
 
-#### where you can save to, or load from check point.
 
 > save_request = 1
+means you're sure your environment is ok, thus you want to save your model after a period of training.
 
-#### means you're sure your environment is ok, thus you want to save your model after a period of training.
 
 > restore_request = 1
-
 means you want to train from "this" check point file (clarified in './checkpoint/checkpoint' file)
-
 Usaully, the file contain the lastest checkpoint file name.
 However, in another way around, if you change the the file name here, then, it would start from the place you want.
 
