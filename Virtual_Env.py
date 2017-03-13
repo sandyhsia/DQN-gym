@@ -28,12 +28,12 @@ default_bounding_lines = [[1., 0., -640.],
 border= [[]]
 
 limited_eyesight = 1
-eyesight = 50
+eyesight = 25
 
 with_cam = 0
 speed_level0 = 5
 speed_level1 = 10
-turn_level0 = math.pi/4
+turn_level0 = math.pi/8
 turn_level1 = math.pi/4
 car_body_lenth = 10
 
@@ -67,6 +67,7 @@ class Virtual_Env():
                 self.default_car_center = [100., 20.]
                 self.default_angle = 0.
                 self.car_target_pt = [0., 0.]
+                self.eat_up_time = 0
 
 
                 for i in range(len(border)/2):
@@ -84,18 +85,20 @@ class Virtual_Env():
                                 self.bounding_lines.append([1., border_line[0], border_line[1]])
 
 
-        def reset(self):
-                self.car_center = [int(random.random()*(self.w- 2*car_body_lenth)+car_body_lenth), int(random.random()*(self.h - 2*car_body_lenth)+car_body_lenth)]
-                self.car_target_pt = [int(random.random()*(self.w- 2*car_body_lenth)+car_body_lenth), int(random.random()*(self.h- 2*car_body_lenth)+car_body_lenth)]
-                '''
-                while cv2.pointPolygonTest(self.bounding_cnt, (self.car_center[0], self.car_center[1]), False) >= 0 or cv2.pointPolygonTest(self.bounding_cnt, (self.car_target_pt[0], self.car_target_pt[1]), False) >= 0:
-                        self.car_center = [int(random.random()*self.w), int(random.random()*self.h)]
-                        self.car_target_pt = [int(random.random()*self.w), int(random.random()*self.h0)]
-                '''
+        def reset(self, mode):
+                if mode == 0: # all init
+                        self.car_center = [int(random.random()*(self.w- 2*car_body_lenth)+car_body_lenth), int(random.random()*(self.h - 2*car_body_lenth)+car_body_lenth)]
+                        self.car_target_pt = [int(random.random()*(self.w- 2*car_body_lenth)+car_body_lenth), int(random.random()*(self.h- 2*car_body_lenth)+car_body_lenth)]
+                        self.angle = round(random.random()*360 - 180)
+                        self.eat_up_time = 0
+                        '''
+                        while cv2.pointPolygonTest(self.bounding_cnt, (self.car_center[0], self.car_center[1]), False) >= 0 or cv2.pointPolygonTest(self.bounding_cnt, (self.car_target_pt[0], self.car_target_pt[1]), False) >= 0:
+                                self.car_center = [int(random.random()*self.w), int(random.random()*self.h)]
+                                self.car_target_pt = [int(random.random()*self.w), int(random.random()*self.h0)]
+                         '''
+                elif mode == 1: # init a new target pt
+                        self.car_target_pt = [int(random.random()*(self.w- 2*car_body_lenth)+car_body_lenth), int(random.random()*(self.h- 2*car_body_lenth)+car_body_lenth)]
 
-                # print self.car_center
-                self.angle = round(random.random()*360 - 180)
-                # self.angle = 180
                 print "reset car location:", self.car_center, self.angle
                 print "reset car target location:", self.car_target_pt
                 state, reward, done = self.step(self.car_center, self.angle, 0)
@@ -224,22 +227,31 @@ class Virtual_Env():
                         head[0] = center[0] + car_body_lenth*np.cos(angle_in_rad)
                         head[1] = center[1] - car_body_lenth*np.sin(angle_in_rad)
                         if two_point_distance(head, self.car_target_pt) <= 10 or two_point_distance(center, self.car_target_pt) <= 10:
-                                done = True
                                 reward = 5
                                 print "Agent: Yoho!!"
+                                self.eat_up_time += 1
+                                next_distance_vec = self.reset(1)
+                                done = False
+
+                                if DEBUG_MODE == 1:
+                                        print "next_distance_vec[0:10]",  next_distance_vec[0:10]
+                                        print "target direction", vector_direction(center, self.car_target_pt), "angle", angle
+                                        print "dis:", next_distance_vec[360], "angle diff:", next_distance_vec[361] 
+                                        print "reward", reward
+                                        time.sleep(1)
+
+                                return next_distance_vec, reward, done
 
                         if done == False:
                                 reward = self.reward_method(next_distance_vec, action)
+                                if DEBUG_MODE == 1:
+                                        print "next_distance_vec[0:10]",  next_distance_vec[0:10]
+                                        print "target direction", vector_direction(center, self.car_target_pt), "angle", angle
+                                        print "dis:", next_distance_vec[360], "angle diff:", next_distance_vec[361] 
+                                        print "reward", reward
+                                        time.sleep(1)
 
-                        if DEBUG_MODE == 1:
-                                print "next_distance_vec[0:10]",  next_distance_vec[0:10]
-                                print "target direction", vector_direction(center, self.car_target_pt), "angle", angle
-                                print "dis:", next_distance_vec[360], "angle diff:", next_distance_vec[361] 
-                                print "reward", reward
-                                time.sleep(1)
-
-
-                        return next_distance_vec, reward, done
+                                return next_distance_vec, reward, done
 
         def agent_action(self, car_center, angle, action):
 
@@ -317,14 +329,14 @@ class Virtual_Env():
         def reward_method(self, next_state, this_state_action):
 
                 if next_state[360] >0:
-                        reward = 10/next_state[360]
+                        reward = 5/next_state[360]
                 else:
-                        reward = 10
+                        reward = 5
 
                 if next_state[361] != 0:
-                        reward += 10/(abs(next_state[361]))
+                        reward += 5/(abs(next_state[361]))
                 else:
-                        reward += 10
+                        reward += 5
 
                 space = 0
                 action = this_state_action
@@ -340,7 +352,7 @@ class Virtual_Env():
                             if the next_distance_vec is half space, then reward is 0'''
 
                         if action == 0:      # w0
-                                reward += 0.1
+                                reward += 0.2
                         elif action == 1:   # w1
                                 reward += 0.00
                         elif action == 2 or action == 6: # a0, d0

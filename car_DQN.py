@@ -6,13 +6,13 @@ import time
 
 # Hyper Parameters for DQN
 GAMMA = 0.9 # discount factor for target Q
-INITIAL_EPSILON = 0.1 # starting value of epsilon
+INITIAL_EPSILON = 0.05 # starting value of epsilon
 FINAL_EPSILON = 0.05 # final value of epsilon
 REPLAY_SIZE = 100000 # experience replay buffer size
 BATCH_SIZE = 32 # size of minibatch
 DEBUG_MODE = 0 # print some info and slow down.
-USE_FC_ONLY = 0 # state is a 362-dim vector
-USE_CONV = 1 # state is a 20x20-dim vector
+USE_FC_ONLY = 1 # state is a 362-dim vector
+USE_CONV = 0 # state is a 20x20-dim vector
 USE_LSTM = 0 # adding rnn to the DQN
 pack_size = 20 # pack one-dim vector into size*size*1 "img" so as to CONV
 
@@ -39,6 +39,7 @@ class DQN():
                 self.session.run(tf.initialize_all_variables())
                 self.time_t = 0
                 self.train_time = 1
+                self.loss = 0
 
 
         def create_Q_network(self):
@@ -224,13 +225,15 @@ class DQN():
                             self.state_input: state_batch
                     })
 
+                loss = 0
+                for i in range(0, BATCH_SIZE):
+                        loss += (Q_value_batch[i][np.argmax(Q_value_batch[i])] - y_batch[i])**2
+                self.loss += loss/BATCH_SIZE
+
                 if DEBUG_MODE:
                         print "calculate y..." 
                         print "Q_value_batch: ", Q_value_batch[0]
                         print "y value: ", y_batch[0]
-                        loss = 0
-                        for i in range(0, BATCH_SIZE):
-                                loss += (Q_value_batch[i][np.argmax(Q_value_batch[i])] - y_batch[i])**2
                         print "loss: ", loss/BATCH_SIZE
                         time.sleep(0.5)
 
@@ -354,5 +357,12 @@ class DQN():
 
                 # print pack_state[0:2]
                 return pack_state
+
+        def reset_loss(self):
+                self.loss = 0
+                return 1
+
+        def get_loss(self):
+                return self.loss
 
 

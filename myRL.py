@@ -15,26 +15,23 @@ TEST = 10 # The number of experiment test every 100 episode
 FC_CHECKPOINT_DIR = './checkpoint/Use_fc'
 Conv_CHECKPOINT_DIR = './checkpoint/Use_conv'
 LSTM_CHECKPOINT_DIR = './checkpoint/Use_lstm'
-USE_FC_ONLY = 0 # state is a 362-dim vector
-USE_CONV = 1 # state is a 20x20-dim vector
+USE_FC_ONLY = 1 # state is a 362-dim vector
+USE_CONV = 0 # state is a 20x20-dim vector
 USE_LSTM = 0 # adding rnn to the DQN
-save_request = 1
+save_request = 0
 restore_request = 1
 want_test = 0
+want_log = 0
+testlog = './' + 'logFile_FC'
 
 def main():
     start_time = time.time()
     # initialize OpenAI Gym env and dqn agent
-    env = Virtual_Env(ENV_NAME, 100, 100)
+    env = Virtual_Env(ENV_NAME, 200, 200)
     agent = DQN(env)
     saver = tf.train.Saver()
     global_t = 0
-    if USE_FC_ONLY == 1:
-            CHECKPOINT_DIR = FC_CHECKPOINT_DIR
-    elif USE_CONV == 1:
-            CHECKPOINT_DIR = Conv_CHECKPOINT_DIR
-    elif USE_LSTM == 1:
-            CHECKPOINT_DIR = LSTM_CHECKPOINT_DIR
+    CHECKPOINT_DIR = choose_dir()
 
     if restore_request == 1:
             checkpoint = tf.train.get_checkpoint_state(CHECKPOINT_DIR)
@@ -48,14 +45,21 @@ def main():
             else:
                     print("Could not find old checkpoint")
 
+    if want_log:
+            init_logfile(testlog, global_t)
+
     try:
             for episode in range(EPISODE):
                     # initialize task
                     print "episode", episode
-                    state = env.reset()
+                    state = env.reset(0)
                     time.sleep(0.5)
                     # Train
                     for step in range(STEP):
+                            
+                            if step == 0:
+                                    time_step = agent.time_step
+
                             action = agent.egreedy_action(state) # e-greedy action for train
                             # print action
                             next_state,reward,done = env.step(env.car_center, env.angle, action)
@@ -63,7 +67,12 @@ def main():
                             agent.perceive(state,action,reward,next_state,done)
                             state = next_state
                             if done == True:
+                                    print_stats_log(episode, env.eat_up_time, step, time_step, agent.time_step, agent.get_loss())
+                                    agent.reset_loss()
                                     break
+                            elif step == STEP - 1:
+                                    print_stats_log(episode, env.eat_up_time, step, time_step, agent.time_step, agent.get_loss())
+                                    agent.reset_loss()
                             # time.sleep(0.01)
 
 
@@ -72,10 +81,10 @@ def main():
                             print "---Test---"
                             total_reward = 0
                             for i in xrange(TEST):
-                                    state = env.reset()
+                                    state = env.reset(0)
                                     time.sleep(0.5)
                                     for j in xrange(STEP):
-                                            action = agent.action(state) # direct action for test
+                                            action = agent.egreedy_action(state) # direct action for test
                                             state,reward,done= env.step(env.car_center, env.angle, action)
                                             total_reward += reward
                                             if done == True:
@@ -89,8 +98,6 @@ def main():
             print "----Average reward reaches expectation. Exit training.----"
             if save_request == 1:
                     print "Now saving... wait."
-                    if not os.path.exists(CHECKPOINT_DIR):
-                            os.mkdir(CHECKPOINT_DIR) 
                     # write wall time
                     wall_t = time.time() - start_time
                     wall_t_fname = CHECKPOINT_DIR + '/' + 'wall_t.' + str(global_t+episode)
@@ -104,9 +111,7 @@ def main():
     except KeyboardInterrupt:
             print "----You press Ctrl+C.----"
             if save_request == 1:
-                    print "Now saving... wait."
-                    if not os.path.exists(CHECKPOINT_DIR):
-                            os.mkdir(CHECKPOINT_DIR)  
+                    print "Now saving... wait."  
                     # write wall time
                     wall_t = time.time() - start_time
                     wall_t_fname = CHECKPOINT_DIR + '/' + 'wall_t.' + str(global_t+episode)
@@ -115,6 +120,48 @@ def main():
                             f.write(str(wall_t))
                     saver.save(agent.session, CHECKPOINT_DIR + '/' + 'checkpoint', global_step =global_t+episode)
                     print "Save done."
+
+def choose_dir():
+        if USE_FC_ONLY == 1:
+                CHECKPOINT_DIR = FC_CHECKPOINT_DIR
+        elif USE_CONV == 1:
+                CHECKPOINT_DIR = Conv_CHECKPOINT_DIR
+        elif USE_LSTM == 1:
+                CHECKPOINT_DIR = LSTM_CHECKPOINT_DIR
+        
+        if not os.path.exists(CHECKPOINT_DIR):
+                os.mkdir(CHECKPOINT_DIR)
+        return CHECKPOINT_DIR
+
+def print_stats_log(episode, eat_up_time, step, init_time_step, new_time_step, loss):
+        print "Eat-up in epi ",episode,": ", eat_up_time
+        print "Done in step: ",step
+        if new_time_step == init_time_step:
+                print "Haven't trained yet."
+        else:
+                print "Average train loss in", (new_time_step - init_time_step), "round:", loss/(new_time_step - init_time_step)
+        print ""
+        
+        if want_log == 1:
+                with open(testlog, 'a') as f:
+                        f.write("espisode: "+str(episode)+'\n')
+                        f.write("eat-up: " +str(eat_up_time)+'\n')
+                        f.write("Done in step: "+str(step)+'\n')
+                        if new_time_step != init_time_step:
+                                f.write("Average train loss in"+str(new_time_step - init_time_step)+"round:"+str(loss/(new_time_step - init_time_step))+'\n')
+                        f.write('\n')
+        return
+
+def init_logfile(filename, global_t):
+        with open(testlog, 'a') as f:
+                f.write("Training starts at "+time.ctime()+'\n')
+                f.write("restore request is: "+str(restore_request)+"from "+str(global_t)+'\n')
+                f.write("save request is: "+str(save_request)+'\n')
+                f.write("Use method from: "+choose_dir()+'\n')
+                f.write('\n')
+
+
+
 
 if __name__ == '__main__':
         main()
