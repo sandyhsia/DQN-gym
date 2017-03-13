@@ -16,8 +16,9 @@ CHECKPOINT_DIR = './checkpoint'
 def main():
     start_time = time.time()
     # initialize OpenAI Gym env and dqn agent
-    env = Virtual_Env(ENV_NAME, 640, 480)
+    env = Virtual_Env(ENV_NAME, 200, 150)
     agent = DQN(env)
+    global_t = 0
 
     saver = tf.train.Saver()
     checkpoint = tf.train.get_checkpoint_state(CHECKPOINT_DIR)
